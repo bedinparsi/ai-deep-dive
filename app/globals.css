@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-ink text-slate-200 antialiased;
+}
+
+/* Rendered-markdown ("prose") styling, dark theme, hand-rolled to avoid extra deps. */
+.doc h1 {
+  @apply text-3xl font-bold text-white mt-2 mb-4 leading-tight;
+}
+.doc h2 {
+  @apply text-2xl font-semibold text-white mt-10 mb-3 border-b border-edge pb-2;
+}
+.doc h3 {
+  @apply text-xl font-semibold text-slate-100 mt-8 mb-2;
+}
+.doc h4 {
+  @apply text-lg font-semibold text-slate-100 mt-6 mb-2;
+}
+.doc p {
+  @apply my-4 leading-7 text-slate-300;
+}
+.doc a {
+  @apply text-accent hover:underline;
+}
+.doc ul {
+  @apply my-4 list-disc pl-6 space-y-1 text-slate-300;
+}
+.doc ol {
+  @apply my-4 list-decimal pl-6 space-y-1 text-slate-300;
+}
+.doc li {
+  @apply leading-7;
+}
+.doc blockquote {
+  @apply border-l-4 border-accent/60 bg-panel/60 pl-4 py-2 my-4 text-slate-300 italic rounded-r;
+}
+.doc code {
+  @apply font-mono text-[0.85em] bg-panel2 text-accent2 px-1.5 py-0.5 rounded;
+}
+.doc pre {
+  @apply bg-panel2 border border-edge rounded-lg p-4 my-5 overflow-x-auto text-sm;
+}
+.doc pre code {
+  @apply bg-transparent text-slate-200 p-0;
+}
+.doc table {
+  @apply my-5 w-full text-sm border-collapse block overflow-x-auto;
+}
+.doc th {
+  @apply bg-panel2 text-left text-slate-100 font-semibold px-3 py-2 border border-edge;
+}
+.doc td {
+  @apply px-3 py-2 border border-edge align-top text-slate-300;
+}
+.doc hr {
+  @apply my-8 border-edge;
+}
+.doc strong {
+  @apply text-white font-semibold;
+}

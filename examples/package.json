@@ -1,0 +1,20 @@
+{
+  "name": "ai-deep-dive-examples",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Runnable, mocked sandboxes for the Harness & Loop Engineering PoV (retail domain).",
+  "type": "module",
+  "scripts": {
+    "ex01": "tsx 01-simple-conventions/run.ts",
+    "ex02": "tsx 02-medium-backpressure/run.ts",
+    "ex03": "tsx 03-complex-planner-generator-evaluator/run.ts",
+    "ex04": "tsx 04-loop-simple-scheduler/run.ts",
+    "ex05": "tsx 05-loop-run-until-goal/run.ts",
+    "ex06": "tsx 06-loop-overnight/run.ts",
+    "all": "npm run ex01 && npm run ex02 && npm run ex03 && npm run ex04 && npm run ex05 && npm run ex06"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
