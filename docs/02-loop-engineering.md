@@ -4,6 +4,16 @@
 
 ---
 
+> ## Same three questions
+> - **WHAT** a loop is → §2.1 — the five pieces + memory, and how a loop sits *on top of* a harness.
+> - **WHY** you'd use one (and when not to) → §2.2 — the bottleneck problem, the balance, and
+>   the three problems loops make sharper.
+> - **HOW** to build one → §2.3 conceptually, and the
+>   **[Implementation Playbook](05-implementation-playbook.md)** (Examples 4–6) for the
+>   file-by-file build — schedulers, worktrees, subagents, and real loop drivers.
+
+---
+
 ## 2.1 WHAT is an AI loop?
 
 For about two years, the way you got work out of a coding model was: write a prompt, read

@@ -40,3 +40,8 @@ next-env.d.ts
 examples/**/workspace/
 examples/**/state.md
 examples/**/triage-inbox.md
+
+# third-party source material (verbatim articles/transcripts) kept locally for research,
+# not republished to the public repo. Remove these lines if you have rights to publish.
+docs/external/
+docs/nick/

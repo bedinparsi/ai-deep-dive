@@ -17,6 +17,19 @@ export default function ExamplesPage() {
         <code className="rounded bg-panel2 px-1 py-0.5 font-mono text-accent2">examples/</code>.
       </p>
 
+      <Link
+        href="/docs/05-implementation-playbook"
+        className="mt-5 block rounded-lg border border-accent/40 bg-accent/5 p-4 transition-colors hover:border-accent"
+      >
+        <div className="text-sm font-semibold text-accent">→ Implementation Playbook</div>
+        <p className="mt-1 text-sm text-slate-300">
+          Want to build these for real in Claude Code? The playbook shows the file/folder
+          structure and the actual contents of every <code className="font-mono text-accent2">CLAUDE.md</code>,{" "}
+          <code className="font-mono text-accent2">SKILL.md</code>, subagent, hook, and loop
+          driver — step by step.
+        </p>
+      </Link>
+
       <Section title="Harness examples (Part 1)" items={harness} />
       <Section title="Loop examples (Part 2)" items={loop} />
     </div>

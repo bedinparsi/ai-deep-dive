@@ -4,6 +4,20 @@
 
 ---
 
+> ## This PoV is built on three questions
+> Everything in this document is organized around **WHAT**, **WHY**, and **HOW** — the
+> spine of the point of view. For harness engineering:
+>
+> - **WHAT** it is → §1.1 — the `model + harness` equation, the six components, and the
+>   framework-vs-harness distinction.
+> - **WHY** you need it → §1.2 — the problems it solves, the compounding-reliability trap,
+>   and what a smart model alone cannot do.
+> - **HOW** to build it → §1.3–§1.4 conceptually, and the
+>   **[Implementation Playbook](05-implementation-playbook.md)** for the hands-on,
+>   file-by-file build of every example.
+
+---
+
 ## 1.1 WHAT is a harness?
 
 Start with the equation everyone in the field has converged on:
@@ -25,6 +39,16 @@ execution logic wrapped around the model that turns it from a text predictor int
 something that finishes real work. Viv Trivedy's one-liner is the cleanest definition:
 *"If you're not the model, you're the harness"*
 ([Trivedy](https://vtrivedy.com/posts/the-anatomy-of-an-agent-harness/)).
+
+Two metaphors make this stick:
+
+- **Horse tack.** The model is a powerful horse — enormous raw capability, but no sense of
+  direction and no concept of "stop." The harness is the bridle, reins, and saddle that
+  channel that power into controlled, useful work.
+- **CPU / operating system** (Phil Schmid, Hugging Face). The model is a CPU that executes
+  instructions; the harness is the OS that manages memory, schedules work, handles I/O,
+  enforces permissions, and recovers from crashes. *A CPU without an OS is a heating
+  element; a model without a harness is a demo.*
 
 Concretely, Addy Osmani lists the harness as six components — this is the exact set we'll
 work through ([Osmani](https://addyosmani.com/blog/agent-harness-engineering/)):
@@ -54,6 +78,29 @@ Remember & learn new knowledge     →  Memory files (CLAUDE.md), web search, MC
 Stay sharp over long context       →  Compaction, tool-output offloading, skills
 Finish long-horizon work           →  Loops, planning, verification (see Part 2)
 ```
+
+### Framework vs. harness — a distinction worth drawing
+
+People conflate these, but they are different things, and the difference drives real
+build-vs-buy decisions:
+
+- A **framework** is *build-time* — a library of components you assemble an agent from
+  (LangChain, CrewAI, AutoGen, Semantic Kernel). It's the blueprint and the building materials.
+- A **harness** is the *runtime* environment that governs how the assembled agent executes:
+  what context it sees each step, how tool calls are verified, what happens on failure, and
+  when a human is paged. The Claude Agent SDK and OpenAI's Codex harness are harnesses.
+
+| Dimension | Framework | Harness |
+|-----------|-----------|---------|
+| Scope | Build-time components | Runtime execution environment |
+| Purpose | Assemble the agent | Govern its behavior in production |
+| Examples | LangChain, CrewAI, AutoGen | Claude Agent SDK, Codex harness |
+| When it matters | Design & implementation | Deployment & operations |
+
+You usually use both: a framework to build the agent, a harness to run it. The common,
+costly mistake is shipping a framework-built agent straight to production with no runtime
+harness. In retail terms: a team can build a returns-agent with a framework in a week, then
+spend weeks on the harness that makes it safe to run against real refunds.
 
 ### Where harness ends and loop begins
 
@@ -166,6 +213,32 @@ positive version: the space of what a harness can unlock doesn't shrink as model
 release to fix your agent's behavior, tune the harness you already have. It's faster,
 cheaper, and — per the benchmark — often has more headroom than a model upgrade.
 
+### The compounding-reliability trap (the math that forces the issue)
+
+Here is the argument that lands hardest with anyone who has run a multi-step agent. Suppose
+each step in a pipeline succeeds a healthy **95%** of the time. Chain the steps and the
+end-to-end success rate collapses, because the probabilities multiply:
+
+```
+ 5 steps : 0.95^5  ≈ 77%   end-to-end
+10 steps : 0.95^10 ≈ 60%
+20 steps : 0.95^20 ≈ 36%
+```
+
+This is why teams report an agent that "works 95% of the time" yet fails on a third of real
+tasks. Per-step reliability is a *lie of averages* once steps depend on each other.
+
+**Why this matters (retail):** a returns/RMA flow is *request → validate → refund → restock
+→ audit* — five dependent steps. Even at 95%/step that's ~77% end-to-end, which is
+unacceptable when one of those steps moves money. The harness is precisely what pushes the
+compounded number back up: verification loops catch the bad step, retries-with-backoff
+absorb transient failures, and checkpoint-resume (§1.3g) avoids re-running the whole chain.
+You do not fix this by hoping each step hits 99%; you fix it structurally.
+
+> The 95%/36% figures are widely cited in the harness-engineering literature; the arithmetic
+> is trivially reproducible, and it aligns with the multi-agent reliability results we cite
+> elsewhere (chaining agents compounds the same way).
+
 ### What if we *didn't* use a harness? A concrete retail walk-through
 
 Make it tangible. You ask a bare model (a chat box, no harness) to fix a discount-
@@ -203,12 +276,31 @@ overhead and maintenance (§1.6). Reach for it when:
 and reaching for a full planner/generator/evaluator rig is waste. Knowing this boundary is
 part of using the technology well; Part 3 formalizes it into a decision matrix.
 
+### A reality check for leaders: a harness is months of work, not a weekend
+
+One honest caveat for anyone budgeting this. A production-grade harness is *serious
+infrastructure*, on par with building a database or a scheduler — and the harness effort is
+often **larger than the agent logic itself**. Public examples: Manus reportedly went through
+roughly six months and five architectural rewrites before their harness was production-ready;
+LangChain iterated through several architectures over about a year for LangGraph's execution
+engine; Martin Fowler's team documented the same "the harness is the big part" reality.
+
+The implication is a build-vs-buy decision: either budget and staff harness engineering as
+real infrastructure work, or **adopt an existing harness/SDK** (the Claude Agent SDK, Codex
+harness) and add only the custom layers your failure modes demand. Start from a v0 and
+ratchet; don't try to design the perfect harness before you've seen your agent fail.
+
+> Sourcing note: the Manus/LangGraph/Fowler references come via the harness-engineering
+> literature and are directionally reliable; treat exact durations as approximate.
+
 ---
 
-## 1.3 HOW to build a harness — the six components in Claude Code
+## 1.3 HOW to build a harness — the components in Claude Code
 
 This section walks each component with the design rules that recur across every source,
-then Section 1.4 puts them to work in three retail examples.
+then §1.4 covers context/memory and §1.5 puts everything to work in three retail examples.
+For the **hands-on, file-by-file build**, jump to the
+**[Implementation Playbook](05-implementation-playbook.md)**.
 
 ### (a) System prompts, CLAUDE.md, AGENTS.md, skills, subagent prompts
 
@@ -255,6 +347,19 @@ Rules that matter:
 - **MCP is a trust boundary.** Tool descriptions are injected text the model will obey —
   a malicious or sloppy MCP server can prompt-inject your agent before you type anything.
   Never connect one you don't trust ([HumanLayer](https://www.humanlayer.dev/blog/skill-issue-harness-engineering-for-coding-agents)).
+- **Scope tools per task, with least privilege.** Don't hand every agent every connector.
+  Give an agent only the tools its task type needs — a planning step doesn't need write
+  access; a code-review agent doesn't need database credentials. This "least-privilege
+  context access" both reduces prompt-injection blast radius and keeps the menu short.
+- **Watch the MCP context tax.** Connecting several MCP servers is not free: an unoptimized
+  multi-server session can burn **50,000–200,000 tokens on tool descriptions and context
+  before any real work begins** — real money on every request. Tune context scope per task
+  type (incident response needs one set of connectors; sprint planning needs another) and
+  turn off servers you aren't actively using.
+
+> The multi-MCP token figures come from the "Knowledge & Harness Engineer" writeups
+> (vendor-flavored, but the principle — MCP has a standing context cost you must budget —
+> is sound and matches Anthropic's "too many tools degrades performance" finding).
 
 ### (c) Bundled infrastructure — filesystem, sandbox, browser
 
@@ -305,6 +410,15 @@ the agent hears nothing. If it fails, the error text is injected back into the l
 agent self-corrects. That makes the feedback loop nearly free in the common case
 ([HumanLayer](https://www.humanlayer.dev/blog/skill-issue-harness-engineering-for-coding-agents)).
 
+**Human-in-the-loop (HITL) is a calibrated form of hook.** Not every action should be
+autonomous. Put an *approval gate* in front of high-risk, irreversible operations —
+deleting data, sending customer emails, moving money, changing infrastructure. The design
+skill is calibration: **start strict and relax with confidence.** Begin by requiring human
+approval for anything destructive/external/expensive, then loosen per action-category as the
+team trusts the agent there. Too many gates and the agent is slower than doing it by hand;
+too few and one hallucinated call is a production incident. This is the last human checkpoint
+before an autonomous action hits a real system.
+
 ### (f) Observability — logs, traces, cost and latency metering
 
 You can't tune what you can't see. Traces of what the agent did (which tools, which files,
@@ -313,6 +427,39 @@ modes and feed them back into the ratchet. Anthropic's own harness work is essen
 loop of *read the traces → find where judgment diverged from mine → update the prompt*
 ([Anthropic](https://www.anthropic.com/engineering/harness-design-long-running-apps)).
 Our examples all emit a small **cost ledger** to make this concrete.
+
+### (g) Lifecycle management & checkpoint-resume — treat the agent as a process
+
+Osmani's six components make one run reliable; this seventh, operational component keeps a
+*long-running* agent alive safely. A production agent is not a request-response function —
+it's a process that needs the same care as any production service:
+
+- **Health checks:** is the agent making progress, or stuck in a loop repeating the same
+  action?
+- **Resource limits:** a hard cap on tokens-per-task and wall-clock time. (A per-request
+  cap of ~4,000 tokens catches a runaway loop before it becomes a $400 overnight bill.)
+- **Graceful shutdown:** save state, release resources, report final status.
+- **Checkpoint-resume:** serialize the agent's state after each successful step. On crash,
+  **resume from the last checkpoint** instead of replaying the whole task — and **validate
+  preconditions on resume** (the world may have changed during downtime). This is distinct
+  from the *context* reset in §1.4: context reset rebuilds the *window*; checkpoint-resume
+  restores the *work state*. Teams report large token savings during degraded conditions
+  because partial failures no longer trigger full restarts.
+
+**Why it matters (retail):** if an overnight inventory reconciliation dies at step 4 of 6,
+checkpoint-resume avoids re-running steps 1–3 and, critically, avoids double-issuing a refund.
+
+### Common failure modes (and the harness component that fixes each)
+
+A quick reference — when your agent misbehaves, check the harness before blaming the model:
+
+| Failure mode | What it looks like | The harness fix |
+|--------------|--------------------|-----------------|
+| **Context rot** | Re-solves solved problems, contradicts earlier decisions, loses the goal | Compaction, note-taking, sub-agent firewall (§1.4) |
+| **Tool explosion** | Wrong tool picked, malformed calls, wasted tokens | Fewer, task-scoped tools (§1.3b) |
+| **Silent failure** | Tool errored, agent proceeds on missing data, output looks plausible but is wrong | Structured output validation after every tool call (§1.3e) |
+| **Infinite loop** | Error → retry → same error → retry, burning tokens | Max retry counts, exponential backoff, loop detection (§1.3g) |
+| **State corruption** | Resumes from checkpoint but the world changed underneath it | Validate preconditions on resume, don't blind-replay (§1.3g) |
 
 ---
 
@@ -376,6 +523,12 @@ bookkeeping that makes humans abandon personal wikis is exactly what LLMs are go
 **Most production retail systems use a hybrid**: an LLM-wiki/OKF layer for *how to think*
 (conventions, domain rules) loaded every session, plus a structured DB for *facts to act
 on* (orders, inventory) queried just-in-time. See the full sub-matrix in Part 3.
+
+**Data quality sets the intelligence ceiling.** Whatever memory you choose, its value is
+capped by what you put in it. A knowledge base full of vague notes, stale file paths, and
+undocumented decisions degrades every agent that reads it — "garbage in" is the agent's
+whole worldview. Curating that knowledge (the same *earn-each-line* discipline as `CLAUDE.md`)
+is the highest-leverage, and most underrated, maintenance work in a mature harness.
 
 ---
 
